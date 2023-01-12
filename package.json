@@ -1,8 +1,8 @@
 {
   "type": "module",
-  "name": "typescript-template",
-  "version": "1.0.0",
-  "description": "A template for NodeJS projects using typescript.",
+  "name": "@organicdesign/libp2p-rpc",
+  "version": "0.1.0",
+  "description": "An RPC module for Libp2p.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -10,9 +10,10 @@
     "build": "mkdir -p dist && touch dist/cleanup && rm dist/* && tsc -b",
     "lint": "eslint ./src/* ./test/*"
   },
+  "homepage": "https://code.organicdesign.nz/organicdesign/libp2p-rpc",
   "repository": {
     "type": "git",
-    "url": "ssh://git@code.organicdesign.nz:222/organicdesign/typescript-template.git"
+    "url": "ssh://git@code.organicdesign.nz:222/organicdesign/libp2p-rpc.git"
   },
   "author": "Saul Boyd",
   "license": "GPL-3.0-or-later",
