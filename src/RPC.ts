@@ -6,6 +6,7 @@ import * as lp from "it-length-prefixed";
 import { pipe } from "it-pipe";
 import { pushable, Pushable } from "it-pushable";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
+import * as Messages from "./RPCMessages.js";
 
 export interface RPCOpts {
 	protocol: string
@@ -62,13 +63,7 @@ export class RPC {
 		const writer = await this.establishStream(peer);
 		const messageId = this.genMsgId();
 
-		writer.push(RPCMessage.encode({
-			request: {
-				id: messageId,
-				params,
-				name
-			}
-		}));
+		writer.push(Messages.createRequest(name, messageId, params));
 
 		return await new Promise((resolve, reject) => {
 			this.msgPromises.set(messageId, { resolve, reject });
@@ -77,13 +72,7 @@ export class RPC {
 
 	notify (peer: PeerId, name: string, params?: Uint8Array) {
 		this.establishStream(peer).then(writer => {
-			writer.push(RPCMessage.encode({
-				request: {
-					id: this.genMsgId(),
-					params,
-					name
-				}
-			}));
+			writer.push(Messages.createNotification(name, params));
 		}).catch(() => {});
 	}
 
@@ -94,20 +83,12 @@ export class RPC {
 			const method = this.methods.get(request.name);
 			const writer = this.writers.get(peer.toString());
 
-			if (!method && request.id == null) {
-				return;
-			}
-
 			if (!method) {
-				return writer?.push(RPCMessage.encode({
-					response: {
-						id: request.id!,
-						error: {
-							code: -32601,
-							message: "Method not found"
-						}
-					}
-				}));
+				if (request.id == null) {
+					return;
+				}
+
+				return writer?.push(Messages.createMethodNotFoundError(request.id));
 			}
 
 			let result: Uint8Array | undefined;
@@ -124,23 +105,10 @@ export class RPC {
 			}
 
 			if (error != null) {
-				return writer?.push(RPCMessage.encode({
-					response: {
-						id: request.id,
-						error: {
-							code: error.code ?? 0,
-							message: error.message
-						}
-					}
-				}));
+				return writer?.push(Messages.createError(request.id, error.message, error.code));
 			}
 
-			return writer?.push(RPCMessage.encode({
-				response: {
-					id: request.id,
-					result
-				}
-			}));
+			return writer?.push(Messages.createResponse(request.id, result));
 		}
 
 		if (response) {
