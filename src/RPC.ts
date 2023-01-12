@@ -1,7 +1,7 @@
 import type { PeerId } from "@libp2p/interface-peer-id";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
-import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "./MessageHandler.js";
+import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "@organicdesign/libp2p-message-handler";
 
 export interface RPCOpts {
 	protocol: string
@@ -40,7 +40,6 @@ export class RPC {
 		await this.handler.start();
 
 		this.handler.handle((message, peer) => {
-			console.log("got message", message);
 			this.handleMessage(RPCMessage.decode(message), peer);
 		});
 	}
@@ -57,7 +56,7 @@ export class RPC {
 		const messageId = this.genMsgId();
 
 		try {
-			await this.handler.send(peer, Messages.createRequest(name, messageId, params));
+			await this.handler.send(Messages.createRequest(name, messageId, params), peer);
 		} catch (error) {
 			const newError: RPCError = {
 				code: -32000,
@@ -73,7 +72,7 @@ export class RPC {
 	}
 
 	notify (peer: PeerId, name: string, params?: Uint8Array) {
-		this.handler.send(peer, Messages.createNotification(name, params)).catch(() => {});
+		this.handler.send(Messages.createNotification(name, params), peer).catch(() => {});
 	}
 
 	// Handle receiving a messsage calling RPC methods or resolving responses.
@@ -88,7 +87,7 @@ export class RPC {
 					return;
 				}
 
-				return await this.handler.send(peer, Messages.createMethodNotFoundError(request.id));
+				return await this.handler.send(Messages.createMethodNotFoundError(request.id), peer);
 			}
 
 			let result: Uint8Array | undefined;
@@ -105,10 +104,10 @@ export class RPC {
 			}
 
 			if (error != null) {
-				return await this.handler.send(peer, Messages.createError(request.id, error.message, error.code));
+				return await this.handler.send(Messages.createError(request.id, error.message, error.code), peer);
 			}
 
-			return await this.handler.send(peer, Messages.createResponse(request.id, result));
+			return await this.handler.send(Messages.createResponse(request.id, result), peer);
 		}
 
 		if (response) {
