@@ -59,8 +59,20 @@ export class RPC {
 		this.methods.set(name, method);
 	}
 
-	async request (peer: PeerId, name: string, params?: Uint8Array) {
-		const writer = await this.establishStream(peer);
+	async request (peer: PeerId, name: string, params?: Uint8Array): Promise<Uint8Array | undefined> {
+		let writer: Pushable<Uint8Array>;
+
+		try {
+			writer = await this.establishStream(peer);
+		} catch (error) {
+			const newError: RPCError = {
+				code: -32000,
+				message: error.message
+			};
+
+			throw newError;
+		}
+
 		const messageId = this.genMsgId();
 
 		writer.push(Messages.createRequest(name, messageId, params));
@@ -76,6 +88,7 @@ export class RPC {
 		}).catch(() => {});
 	}
 
+	// Handle receiving a messsage calling RPC methods or resolving responses.
 	private async handleMessage (message: RPCMessage, peer: PeerId) {
 		const { request, response } = message;
 
@@ -128,6 +141,7 @@ export class RPC {
 		}
 	}
 
+	// Establish a stream to a peer reusing an existing one if it already exists.
 	private async establishStream (peer: PeerId) {
 		const connection = this.components.connectionManager.getConnections().find(c => c.remotePeer.equals(peer));
 
@@ -147,6 +161,7 @@ export class RPC {
 		return this.handleStream(stream, connection);
 	}
 
+	// Handle reading/writing to a stream.
 	private handleStream (stream: Stream, connection: Connection) {
 		const that = this;
 		const peerId = connection.remotePeer.toString();
