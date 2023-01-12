@@ -1,22 +1,13 @@
-import type { ConnectionManager } from "@libp2p/interface-connection-manager";
-import type { Connection, Stream } from "@libp2p/interface-connection";
-import type { Registrar } from "@libp2p/interface-registrar";
 import type { PeerId } from "@libp2p/interface-peer-id";
-import * as lp from "it-length-prefixed";
-import { pipe } from "it-pipe";
-import { pushable, Pushable } from "it-pushable";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
-import { createMessageHandler, MessageHandler } from "./MessageHandler.js";
+import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "./MessageHandler.js";
 
 export interface RPCOpts {
 	protocol: string
 }
 
-export interface RPCComponents {
-	connectionManager: ConnectionManager
-	registrar: Registrar
-}
+export type RPCComponents = MessageHandlerComponents;
 
 type RPCMethod = (params: Uint8Array | undefined, sender: PeerId) => Promise<Uint8Array | void> | Uint8Array | void;
 
@@ -27,9 +18,7 @@ interface Resolver {
 
 export class RPC {
 	private readonly options: RPCOpts;
-	private readonly components: RPCComponents;
 	private readonly methods = new Map<string, RPCMethod>();
-	private readonly writers = new Map<string, Pushable<Uint8Array>>();
 	private readonly msgPromises = new Map<number, Resolver>();
 	private readonly handler: MessageHandler;
 
@@ -43,8 +32,6 @@ export class RPC {
 		this.options = {
 			protocol: options.protocol ?? "/libp2p-rpc/0.0.1",
 		};
-
-		this.components = components;
 
 		this.handler = createMessageHandler({ protocol: this.options.protocol })(components);
 	}
@@ -95,7 +82,6 @@ export class RPC {
 
 		if (request != null) {
 			const method = this.methods.get(request.name);
-			const writer = this.writers.get(peer.toString());
 
 			if (!method) {
 				if (request.id == null) {
