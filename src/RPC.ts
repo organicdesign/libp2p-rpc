@@ -152,13 +152,11 @@ export class RPC {
 
 			this.msgPromises.delete(response.id);
 
-			if (response.result) {
-				resolver.resolve(response.result);
+			if (response.error == null) {
+				return resolver.resolve(response.result);
 			}
 
-			if (response.error) {
-				resolver.reject(response.error);
-			}
+			resolver.reject(response.error);
 		}
 	}
 
