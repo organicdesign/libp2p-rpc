@@ -176,13 +176,9 @@ export class RPC {
 			}
 		}
 
-		let writer: Pushable<Uint8Array>;
+		const stream = await connection.newStream(this.options.protocol);
 
-		await this.components.registrar.handle(this.options.protocol, async ({ stream, connection }) => {
-			writer = this.handleStream(stream, connection);
-		});
-
-		return writer!;
+		return this.handleStream(stream, connection);
 	}
 
 	private handleStream (stream: Stream, connection: Connection) {
