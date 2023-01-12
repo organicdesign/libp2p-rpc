@@ -7,6 +7,7 @@ import { pipe } from "it-pipe";
 import { pushable, Pushable } from "it-pushable";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
+import { createMessageHandler, MessageHandler } from "./MessageHandler.js";
 
 export interface RPCOpts {
 	protocol: string
@@ -30,6 +31,7 @@ export class RPC {
 	private readonly methods = new Map<string, RPCMethod>();
 	private readonly writers = new Map<string, Pushable<Uint8Array>>();
 	private readonly msgPromises = new Map<number, Resolver>();
+	private readonly handler: MessageHandler;
 
 	private readonly genMsgId = (() => {
 		let id = 0;
@@ -43,16 +45,21 @@ export class RPC {
 		};
 
 		this.components = components;
+
+		this.handler = createMessageHandler({ protocol: this.options.protocol })(components);
 	}
 
 	async start () {
-		await this.components.registrar.handle(this.options.protocol, async ({ stream, connection }) => {
-			this.handleStream(stream, connection);
+		await this.handler.start();
+
+		this.handler.handle((message, peer) => {
+			console.log("got message", message);
+			this.handleMessage(RPCMessage.decode(message), peer);
 		});
 	}
 
 	async stop () {
-		await this.components.registrar.unhandle(this.options.protocol);
+		await this.handler.stop();
 	}
 
 	addMethod (name: string, method: RPCMethod) {
@@ -60,10 +67,10 @@ export class RPC {
 	}
 
 	async request (peer: PeerId, name: string, params?: Uint8Array): Promise<Uint8Array | undefined> {
-		let writer: Pushable<Uint8Array>;
+		const messageId = this.genMsgId();
 
 		try {
-			writer = await this.establishStream(peer);
+			await this.handler.send(peer, Messages.createRequest(name, messageId, params));
 		} catch (error) {
 			const newError: RPCError = {
 				code: -32000,
@@ -73,19 +80,13 @@ export class RPC {
 			throw newError;
 		}
 
-		const messageId = this.genMsgId();
-
-		writer.push(Messages.createRequest(name, messageId, params));
-
 		return await new Promise((resolve, reject) => {
 			this.msgPromises.set(messageId, { resolve, reject });
 		});
 	}
 
 	notify (peer: PeerId, name: string, params?: Uint8Array) {
-		this.establishStream(peer).then(writer => {
-			writer.push(Messages.createNotification(name, params));
-		}).catch(() => {});
+		this.handler.send(peer, Messages.createNotification(name, params)).catch(() => {});
 	}
 
 	// Handle receiving a messsage calling RPC methods or resolving responses.
@@ -101,7 +102,7 @@ export class RPC {
 					return;
 				}
 
-				return writer?.push(Messages.createMethodNotFoundError(request.id));
+				return await this.handler.send(peer, Messages.createMethodNotFoundError(request.id));
 			}
 
 			let result: Uint8Array | undefined;
@@ -118,10 +119,10 @@ export class RPC {
 			}
 
 			if (error != null) {
-				return writer?.push(Messages.createError(request.id, error.message, error.code));
+				return await this.handler.send(peer, Messages.createError(request.id, error.message, error.code));
 			}
 
-			return writer?.push(Messages.createResponse(request.id, result));
+			return await this.handler.send(peer, Messages.createResponse(request.id, result));
 		}
 
 		if (response) {
@@ -139,61 +140,6 @@ export class RPC {
 
 			resolver.reject(response.error);
 		}
-	}
-
-	// Establish a stream to a peer reusing an existing one if it already exists.
-	private async establishStream (peer: PeerId) {
-		const connection = this.components.connectionManager.getConnections().find(c => c.remotePeer.equals(peer));
-
-		if (connection == null) {
-			throw new Error("not connected");
-		}
-
-		for (const stream of connection.streams) {
-			if (this.writers.has(stream.id)) {
-				// We already have a stream open.
-				return this.writers.get(stream.id)!;
-			}
-		}
-
-		const stream = await connection.newStream(this.options.protocol);
-
-		return this.handleStream(stream, connection);
-	}
-
-	// Handle reading/writing to a stream.
-	private handleStream (stream: Stream, connection: Connection) {
-		const that = this;
-		const peerId = connection.remotePeer.toString();
-
-		// Handle inputs.
-		pipe(stream, lp.decode(), async function (source) {
-			for await (const message of source) {
-				await that.handleMessage(RPCMessage.decode(message), connection.remotePeer);
-			}
-		}).catch(() => {
-			// Do nothing
-		});
-
-		// Don't pipe events through the same connection
-		if (this.writers.has(peerId)) {
-			return this.writers.get(peerId)!;
-		}
-
-		const writer = pushable();
-
-		this.writers.set(peerId, writer);
-
-		// Handle outputs.
-		(async () => {
-			try {
-				await pipe(writer, lp.encode(), stream);
-			} finally {
-				this.writers.delete(peerId);
-			}
-		})();
-
-		return writer;
 	}
 }
 
