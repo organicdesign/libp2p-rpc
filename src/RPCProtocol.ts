@@ -9,7 +9,7 @@ import type { Codec } from 'protons-runtime'
 
 export interface RPCRequest {
   name: string
-  data: Uint8Array
+  params?: Uint8Array
   id?: number
 }
 
@@ -28,9 +28,9 @@ export namespace RPCRequest {
           w.string(obj.name)
         }
 
-        if (opts.writeDefaults === true || (obj.data != null && obj.data.byteLength > 0)) {
+        if (obj.params != null) {
           w.uint32(18)
-          w.bytes(obj.data)
+          w.bytes(obj.params)
         }
 
         if (obj.id != null) {
@@ -43,8 +43,7 @@ export namespace RPCRequest {
         }
       }, (reader, length) => {
         const obj: any = {
-          name: '',
-          data: new Uint8Array(0)
+          name: ''
         }
 
         const end = length == null ? reader.len : reader.pos + length
@@ -57,7 +56,7 @@ export namespace RPCRequest {
               obj.name = reader.string()
               break
             case 2:
-              obj.data = reader.bytes()
+              obj.params = reader.bytes()
               break
             case 3:
               obj.id = reader.uint32()
@@ -102,7 +101,7 @@ export namespace RPCError {
 
         if (opts.writeDefaults === true || obj.code !== 0) {
           w.uint32(8)
-          w.uint32(obj.code)
+          w.int32(obj.code)
         }
 
         if (opts.writeDefaults === true || obj.message !== '') {
@@ -131,7 +130,7 @@ export namespace RPCError {
 
           switch (tag >>> 3) {
             case 1:
-              obj.code = reader.uint32()
+              obj.code = reader.int32()
               break
             case 2:
               obj.message = reader.string()
@@ -236,5 +235,74 @@ export namespace RPCResponse {
 
   export const decode = (buf: Uint8Array | Uint8ArrayList): RPCResponse => {
     return decodeMessage(buf, RPCResponse.codec())
+  }
+}
+
+export interface RPCMessage {
+  request?: RPCRequest
+  response?: RPCResponse
+}
+
+export namespace RPCMessage {
+  let _codec: Codec<RPCMessage>
+
+  export const codec = (): Codec<RPCMessage> => {
+    if (_codec == null) {
+      _codec = message<RPCMessage>((obj, w, opts = {}) => {
+        if (opts.lengthDelimited !== false) {
+          w.fork()
+        }
+
+        if (obj.request != null) {
+          w.uint32(10)
+          RPCRequest.codec().encode(obj.request, w, {
+            writeDefaults: false
+          })
+        }
+
+        if (obj.response != null) {
+          w.uint32(18)
+          RPCResponse.codec().encode(obj.response, w, {
+            writeDefaults: false
+          })
+        }
+
+        if (opts.lengthDelimited !== false) {
+          w.ldelim()
+        }
+      }, (reader, length) => {
+        const obj: any = {}
+
+        const end = length == null ? reader.len : reader.pos + length
+
+        while (reader.pos < end) {
+          const tag = reader.uint32()
+
+          switch (tag >>> 3) {
+            case 1:
+              obj.request = RPCRequest.codec().decode(reader, reader.uint32())
+              break
+            case 2:
+              obj.response = RPCResponse.codec().decode(reader, reader.uint32())
+              break
+            default:
+              reader.skipType(tag & 7)
+              break
+          }
+        }
+
+        return obj
+      })
+    }
+
+    return _codec
+  }
+
+  export const encode = (obj: RPCMessage): Uint8Array => {
+    return encodeMessage(obj, RPCMessage.codec())
+  }
+
+  export const decode = (buf: Uint8Array | Uint8ArrayList): RPCMessage => {
+    return decodeMessage(buf, RPCMessage.codec())
   }
 }

@@ -2,12 +2,12 @@ syntax = "proto3";
 
 message RPCRequest {
 	string name = 1;
-	bytes data = 2;
+	optional bytes params = 2;
 	optional uint32 id = 3;
 }
 
 message RPCError {
-	uint32 code = 1;
+	int32 code = 1;
 	string message = 2;
 	optional bytes data = 3;
 }
@@ -16,4 +16,9 @@ message RPCResponse {
 	uint32 id = 1;
 	optional bytes result = 2;
 	optional RPCError error = 3;
+}
+
+message RPCMessage {
+	optional RPCRequest request = 1;
+	optional RPCResponse response = 2;
 }
