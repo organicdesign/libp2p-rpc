@@ -19,7 +19,10 @@
   "author": "Saul Boyd",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
+    "@libp2p/interface-connection": "^3.0.7",
     "@libp2p/interface-connection-manager": "^1.3.5",
+    "@libp2p/interface-peer-id": "^2.0.0",
+    "@libp2p/interface-registrar": "^2.0.7",
     "@swc/core": "^1.3.14",
     "@types/jest": "^29.2.2",
     "@typescript-eslint/eslint-plugin": "^5.42.1",
@@ -32,6 +35,9 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
+    "it-length-prefixed": "^8.0.4",
+    "it-pipe": "^2.0.5",
+    "it-pushable": "^3.1.2",
     "protons-runtime": "^4.0.1"
   }
 }
