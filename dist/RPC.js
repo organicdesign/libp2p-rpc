@@ -7,23 +7,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __asyncValues = (this && this.__asyncValues) || function (o) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-};
-import * as lp from "it-length-prefixed";
-import { pipe } from "it-pipe";
-import { pushable } from "it-pushable";
+import { logger } from "@libp2p/logger";
+import { createMessageHandler } from "@organicdesign/libp2p-message-handler";
 import { RPCMessage } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
+import { RPCException } from "./RPCException.js";
+const log = {
+    general: logger("libp2p:rpc")
+};
 export class RPC {
     constructor(components, options = {}) {
-        var _a;
+        var _a, _b;
         this.methods = new Map();
-        this.writers = new Map();
         this.msgPromises = new Map();
         this.genMsgId = (() => {
             let id = 0;
@@ -31,19 +26,23 @@ export class RPC {
         })();
         this.options = {
             protocol: (_a = options.protocol) !== null && _a !== void 0 ? _a : "/libp2p-rpc/0.0.1",
+            timeout: (_b = options.timeout) !== null && _b !== void 0 ? _b : 5000
         };
-        this.components = components;
+        this.handler = createMessageHandler({ protocol: this.options.protocol })(components);
     }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.components.registrar.handle(this.options.protocol, ({ stream, connection }) => __awaiter(this, void 0, void 0, function* () {
-                this.handleStream(stream, connection);
-            }));
+            yield this.handler.start();
+            this.handler.handle((message, peer) => {
+                this.handleMessage(RPCMessage.decode(message), peer);
+            });
+            log.general("started");
         });
     }
     stop() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.components.registrar.unhandle(this.options.protocol);
+            yield this.handler.stop();
+            log.general("stopped");
         });
     }
     addMethod(name, method) {
@@ -51,28 +50,32 @@ export class RPC {
     }
     request(peer, name, params) {
         return __awaiter(this, void 0, void 0, function* () {
-            let writer;
+            const messageId = this.genMsgId();
             try {
-                writer = yield this.establishStream(peer);
+                yield this.handler.send(Messages.createRequest(name, messageId, params), peer);
             }
             catch (error) {
+                log.general.error("failed to send message: %o", error);
                 const newError = {
                     code: -32000,
                     message: error.message
                 };
                 throw newError;
             }
-            const messageId = this.genMsgId();
-            writer.push(Messages.createRequest(name, messageId, params));
+            log.general("request '%s' on peer: %p", name, peer);
             return yield new Promise((resolve, reject) => {
                 this.msgPromises.set(messageId, { resolve, reject });
+                if (this.options.timeout < 0) {
+                    return;
+                }
+                const timeoutError = new RPCException("timeout", 0);
+                setTimeout(() => reject(timeoutError), this.options.timeout);
             });
         });
     }
     notify(peer, name, params) {
-        this.establishStream(peer).then(writer => {
-            writer.push(Messages.createNotification(name, params));
-        }).catch(() => { });
+        this.handler.send(Messages.createNotification(name, params), peer).catch(() => { });
+        log.general("notify '%s' on peer: %p", name, peer);
     }
     // Handle receiving a messsage calling RPC methods or resolving responses.
     handleMessage(message, peer) {
@@ -81,28 +84,43 @@ export class RPC {
             const { request, response } = message;
             if (request != null) {
                 const method = this.methods.get(request.name);
-                const writer = this.writers.get(peer.toString());
                 if (!method) {
                     if (request.id == null) {
                         return;
                     }
-                    return writer === null || writer === void 0 ? void 0 : writer.push(Messages.createMethodNotFoundError(request.id));
+                    return yield this.handler.send(Messages.createMethodNotFoundError(request.id), peer);
                 }
                 let result;
                 let error = null;
                 try {
+                    log.general("method '%s' called by peer: %p", request.name, peer);
                     result = (_a = yield method(request.params, peer)) !== null && _a !== void 0 ? _a : undefined;
                 }
                 catch (err) {
-                    error = err;
+                    log.general.error("method '%s' threw error: %o", err);
+                    if (err instanceof RPCException) {
+                        error = err;
+                    }
+                    else if (err instanceof Error) {
+                        error = new RPCException(err.message, 0);
+                        error.stack = err.stack;
+                    }
+                    else {
+                        try {
+                            error = new RPCException(JSON.stringify(err), 0);
+                        }
+                        catch (error) {
+                            error = new RPCException("unknown error", 0);
+                        }
+                    }
                 }
                 if (request.id == null) {
                     return;
                 }
                 if (error != null) {
-                    return writer === null || writer === void 0 ? void 0 : writer.push(Messages.createError(request.id, error.message, error.code));
+                    return yield this.handler.send(Messages.createError(request.id, error.message, error.code), peer);
                 }
-                return writer === null || writer === void 0 ? void 0 : writer.push(Messages.createResponse(request.id, result));
+                return yield this.handler.send(Messages.createResponse(request.id, result), peer);
             }
             if (response) {
                 const resolver = this.msgPromises.get(response.id);
@@ -116,73 +134,6 @@ export class RPC {
                 resolver.reject(response.error);
             }
         });
-    }
-    // Establish a stream to a peer reusing an existing one if it already exists.
-    establishStream(peer) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const connection = this.components.connectionManager.getConnections().find(c => c.remotePeer.equals(peer));
-            if (connection == null) {
-                throw new Error("not connected");
-            }
-            for (const stream of connection.streams) {
-                if (this.writers.has(stream.id)) {
-                    // We already have a stream open.
-                    return this.writers.get(stream.id);
-                }
-            }
-            const stream = yield connection.newStream(this.options.protocol);
-            return this.handleStream(stream, connection);
-        });
-    }
-    // Handle reading/writing to a stream.
-    handleStream(stream, connection) {
-        const that = this;
-        const peerId = connection.remotePeer.toString();
-        // Handle inputs.
-        pipe(stream, lp.decode(), function (source) {
-            var _a, source_1, source_1_1;
-            var _b, e_1, _c, _d;
-            return __awaiter(this, void 0, void 0, function* () {
-                try {
-                    for (_a = true, source_1 = __asyncValues(source); source_1_1 = yield source_1.next(), _b = source_1_1.done, !_b;) {
-                        _d = source_1_1.value;
-                        _a = false;
-                        try {
-                            const message = _d;
-                            yield that.handleMessage(RPCMessage.decode(message), connection.remotePeer);
-                        }
-                        finally {
-                            _a = true;
-                        }
-                    }
-                }
-                catch (e_1_1) { e_1 = { error: e_1_1 }; }
-                finally {
-                    try {
-                        if (!_a && !_b && (_c = source_1.return)) yield _c.call(source_1);
-                    }
-                    finally { if (e_1) throw e_1.error; }
-                }
-            });
-        }).catch(() => {
-            // Do nothing
-        });
-        // Don't pipe events through the same connection
-        if (this.writers.has(peerId)) {
-            return this.writers.get(peerId);
-        }
-        const writer = pushable();
-        this.writers.set(peerId, writer);
-        // Handle outputs.
-        (() => __awaiter(this, void 0, void 0, function* () {
-            try {
-                yield pipe(writer, lp.encode(), stream);
-            }
-            finally {
-                this.writers.delete(peerId);
-            }
-        }))();
-        return writer;
     }
 }
 export const createRPC = (options) => (components) => new RPC(components, options);

@@ -1,20 +1,16 @@
-import type { ConnectionManager } from "@libp2p/interface-connection-manager";
-import type { Registrar } from "@libp2p/interface-registrar";
 import type { PeerId } from "@libp2p/interface-peer-id";
+import { MessageHandlerComponents } from "@organicdesign/libp2p-message-handler";
 export interface RPCOpts {
     protocol: string;
+    timeout: number;
 }
-export interface RPCComponents {
-    connectionManager: ConnectionManager;
-    registrar: Registrar;
-}
-type RPCMethod = (params: Uint8Array | undefined, sender: PeerId) => Promise<Uint8Array | void> | Uint8Array | void;
+export type RPCComponents = MessageHandlerComponents;
+export type RPCMethod = (params: Uint8Array | undefined, sender: PeerId) => Promise<Uint8Array | void> | Uint8Array | void;
 export declare class RPC {
     private readonly options;
-    private readonly components;
     private readonly methods;
-    private readonly writers;
     private readonly msgPromises;
+    private readonly handler;
     private readonly genMsgId;
     constructor(components: RPCComponents, options?: Partial<RPCOpts>);
     start(): Promise<void>;
@@ -23,8 +19,5 @@ export declare class RPC {
     request(peer: PeerId, name: string, params?: Uint8Array): Promise<Uint8Array | undefined>;
     notify(peer: PeerId, name: string, params?: Uint8Array): void;
     private handleMessage;
-    private establishStream;
-    private handleStream;
 }
 export declare const createRPC: (options?: Partial<RPCOpts>) => (components: RPCComponents) => RPC;
-export {};

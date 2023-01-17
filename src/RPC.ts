@@ -133,7 +133,7 @@ export class RPC {
 				} else {
 					try {
 						error = new RPCException(JSON.stringify(err), 0);
-					} catch (error) {
+					} catch (err) {
 						error = new RPCException("unknown error", 0);
 					}
 				}
