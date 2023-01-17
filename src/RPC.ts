@@ -1,7 +1,12 @@
 import type { PeerId } from "@libp2p/interface-peer-id";
+import { logger } from "@libp2p/logger";
+import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "@organicdesign/libp2p-message-handler";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
-import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "@organicdesign/libp2p-message-handler";
+
+const log = {
+	general: logger("libp2p:rpc")
+};
 
 export interface RPCOpts {
 	protocol: string
@@ -42,10 +47,14 @@ export class RPC {
 		this.handler.handle((message, peer) => {
 			this.handleMessage(RPCMessage.decode(message), peer);
 		});
+
+		log.general("started");
 	}
 
 	async stop () {
 		await this.handler.stop();
+
+		log.general("stopped");
 	}
 
 	addMethod (name: string, method: RPCMethod) {
@@ -58,6 +67,8 @@ export class RPC {
 		try {
 			await this.handler.send(Messages.createRequest(name, messageId, params), peer);
 		} catch (error) {
+			log.general.error("failed to send message: %o", error);
+
 			const newError: RPCError = {
 				code: -32000,
 				message: error.message
@@ -66,6 +77,8 @@ export class RPC {
 			throw newError;
 		}
 
+		log.general("request '%s' on peer: %p", name, peer);
+
 		return await new Promise((resolve, reject) => {
 			this.msgPromises.set(messageId, { resolve, reject });
 		});
@@ -73,6 +86,8 @@ export class RPC {
 
 	notify (peer: PeerId, name: string, params?: Uint8Array) {
 		this.handler.send(Messages.createNotification(name, params), peer).catch(() => {});
+
+		log.general("notify '%s' on peer: %p", name, peer);
 	}
 
 	// Handle receiving a messsage calling RPC methods or resolving responses.
@@ -94,8 +109,10 @@ export class RPC {
 			let error: Error & RPCError | null = null;
 
 			try {
+				log.general("method '%s' called by peer: %p", request.name, peer);
 				result = await method(request.params, peer) ?? undefined;
 			} catch (err) {
+				log.general.error("method '%s' threw error: %o", err);
 				error = err;
 			}
 
