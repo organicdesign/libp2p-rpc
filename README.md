@@ -2,6 +2,20 @@
 
 An RPC module for Libp2p.
 
+## Table of Contents
+
+- [Install](#install)
+- [Usage](#usage)
+- [API](#api)
+  - [createRPC](#createrpc)
+  - [RPC](#rpc)
+    - [start](#start)
+    - [stop](#stop)
+    - [addMethod](#addmethod)
+    - [request](#request)
+    - [notify](#notify)
+- [Logging](#logging)
+
 ## Install
 
 ```
@@ -136,3 +150,4 @@ Or in the browser:
 
 ```javascript
 localStorage.setItem("debug", "libp2p:rpc*");
+```
