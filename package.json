@@ -3,6 +3,7 @@
   "name": "@organicdesign/libp2p-rpc",
   "version": "0.1.0",
   "description": "An RPC module for Libp2p.",
+  "keywords": ["libp2p", "rpc"],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
