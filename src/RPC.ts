@@ -9,7 +9,8 @@ const log = {
 };
 
 export interface RPCOpts {
-	protocol: string
+	protocol: string,
+	timeout: number
 }
 
 export type RPCComponents = MessageHandlerComponents;
@@ -36,6 +37,7 @@ export class RPC {
 	constructor (components: RPCComponents, options: Partial<RPCOpts> = {}) {
 		this.options = {
 			protocol: options.protocol ?? "/libp2p-rpc/0.0.1",
+			timeout: options.timeout ?? 5000
 		};
 
 		this.handler = createMessageHandler({ protocol: this.options.protocol })(components);
