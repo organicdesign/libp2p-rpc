@@ -9,7 +9,7 @@ export interface RPCOpts {
 
 export type RPCComponents = MessageHandlerComponents;
 
-type RPCMethod = (params: Uint8Array | undefined, sender: PeerId) => Promise<Uint8Array | void> | Uint8Array | void;
+export type RPCMethod = (params: Uint8Array | undefined, sender: PeerId) => Promise<Uint8Array | void> | Uint8Array | void;
 
 interface Resolver {
 	resolve: (result?: Uint8Array) => void
@@ -91,7 +91,7 @@ export class RPC {
 			}
 
 			let result: Uint8Array | undefined;
-			let error: Error & { code?: number } | null = null;
+			let error: Error & RPCError | null = null;
 
 			try {
 				result = await method(request.params, peer) ?? undefined;
