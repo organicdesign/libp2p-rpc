@@ -43,7 +43,7 @@ createRPC([options])(libp2p);
 
 - `options` `<Object>` An optional object with the following properties:
   - `protocol` `<string>` A string which specifies the name of the protocol. Default: `"/libp2p-rpc/0.0.1"`.
-  - `timeout` `<number>` The timeout in milliseconds for requests. Default: 5000 (5s)
+  - `timeout` `<number>` The timeout in milliseconds for requests. Set to `-1` to disable. Default: `5000` (5s)
 - `libp2p` `<Libp2p>` The libp2p instance.
 - Returns: `<RPC>` The RPC instance.
 
@@ -57,7 +57,7 @@ createRPC(libp2p, [options]);
 
 - `options` `<Object>` An optional object with the following properties:
   - `protocol` `<string>` A string which specifies the name of the protocol. Default: `"/libp2p-rpc/0.0.1"`.
-  - `timeout` `<number>` The timeout in milliseconds for requests. Default: 5000 (5s)
+  - `timeout` `<number>` The timeout in milliseconds for requests. Set to `-1` to disable. Default: `5000` (5s)
 - `libp2p` `<Libp2p>` The libp2p instance.
 
 The RPC class. It is not recommended to instanciate it directly but rather use the `createRPC` function.

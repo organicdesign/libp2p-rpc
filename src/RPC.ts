@@ -3,6 +3,7 @@ import { logger } from "@libp2p/logger";
 import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "@organicdesign/libp2p-message-handler";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
+import { RPCException } from "./RPCException.js";
 
 const log = {
 	general: logger("libp2p:rpc")
@@ -83,6 +84,14 @@ export class RPC {
 
 		return await new Promise((resolve, reject) => {
 			this.msgPromises.set(messageId, { resolve, reject });
+
+			if (this.options.timeout < 0) {
+				return;
+			}
+
+			const timeoutError = new RPCException("timeout", 0);
+
+			setTimeout(() => reject(timeoutError), this.options.timeout);
 		});
 	}
 
@@ -108,14 +117,26 @@ export class RPC {
 			}
 
 			let result: Uint8Array | undefined;
-			let error: Error & RPCError | null = null;
+			let error: RPCException | null = null;
 
 			try {
 				log.general("method '%s' called by peer: %p", request.name, peer);
 				result = await method(request.params, peer) ?? undefined;
 			} catch (err) {
 				log.general.error("method '%s' threw error: %o", err);
-				error = err;
+
+				if (err instanceof RPCException) {
+					error = err;
+				} else if (err instanceof Error) {
+					error = new RPCException(err.message, 0);
+					error.stack = err.stack;
+				} else {
+					try {
+						error = new RPCException(JSON.stringify(err), 0);
+					} catch (error) {
+						error = new RPCException("unknown error", 0);
+					}
+				}
 			}
 
 			if (request.id == null) {
