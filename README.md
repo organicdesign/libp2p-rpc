@@ -15,6 +15,7 @@ An RPC module for Libp2p.
     - [request](#request)
     - [notify](#notify)
 - [Logging](#logging)
+- [TODO](#todo)
 
 ## Install
 
@@ -151,3 +152,7 @@ Or in the browser:
 ```javascript
 localStorage.setItem("debug", "libp2p:rpc*");
 ```
+
+## TODO
+
+- [ ] Add tests.
