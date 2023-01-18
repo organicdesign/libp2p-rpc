@@ -15,7 +15,8 @@ An RPC module for Libp2p.
     - [request](#request)
     - [notify](#notify)
 - [Logging](#logging)
-- [TODO](#todo)
+- [Tests](#tests)
+- [To-Do](#to-do)
 
 ## Install
 
@@ -153,6 +154,14 @@ Or in the browser:
 localStorage.setItem("debug", "libp2p:rpc*");
 ```
 
-## TODO
+## Tests
+
+To run the test suite:
+
+```
+npm run test
+```
+
+## To-Do
 
 - [ ] Add tests.
