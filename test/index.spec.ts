@@ -22,28 +22,64 @@ const createComponents = async (): Promise<RPCComponents & { peerId: PeerId }> =
 	return components;
 };
 
-let messageHandler: RPC, components: RPCComponents & { peerId: PeerId };
+let localComponents: RPCComponents & { peerId: PeerId };
+let localRpc: RPC;
+let remoteComponents: RPCComponents & { peerId: PeerId };
+let remoteRpc: RPC;
 
 beforeEach(async () => {
-	components = await createComponents();
-	messageHandler = createRPC()(components);
+	localComponents = await createComponents();
+	localRpc = createRPC()(localComponents);
+	remoteComponents = await createComponents();
+	remoteRpc = createRPC()(remoteComponents);
 });
 
 describe("startable interface", () => {
 	it("is not started after creation", async () => {
-		expect(messageHandler.isStarted()).toBe(false);
+		expect(localRpc.isStarted()).toBe(false);
 	});
 
 	it("starts", async () => {
-		await messageHandler.start();
+		await localRpc.start();
 
-		expect(messageHandler.isStarted()).toBe(true);
+		expect(localRpc.isStarted()).toBe(true);
 	});
 
 	it("stops", async () => {
-		await messageHandler.start();
-		await messageHandler.stop();
+		await localRpc.start();
+		await localRpc.stop();
 
-		expect(messageHandler.isStarted()).toBe(false);
+		expect(localRpc.isStarted()).toBe(false);
+	});
+});
+
+describe("rpc", () => {
+	beforeEach(async () => {
+		await localRpc.start();
+		await remoteRpc.start();
+
+		await remoteComponents.connectionManager.openConnection(localComponents.peerId);
+	});
+
+	afterEach(async () => {
+		await localRpc.stop();
+		await remoteRpc.stop();
+	});
+
+	it("calls the handler function on notifications", async () => {
+		const params = new Uint8Array([1, 2, 3]);
+
+		const dataPromise: Promise<{ params: Uint8Array, sender: PeerId }> = new Promise(resolve => {
+			localRpc.addMethod("test", (params: Uint8Array, sender: PeerId) => {
+				resolve({ params, sender });
+			});
+		});
+
+		remoteRpc.notify(localComponents.peerId, "test", params);
+
+		const data = await dataPromise;
+
+		expect(data.sender.equals(remoteComponents.peerId)).toBe(true);
+		expect(data.params).toStrictEqual(params);
 	});
 });
