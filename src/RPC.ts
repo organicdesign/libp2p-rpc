@@ -1,4 +1,5 @@
 import type { PeerId } from "@libp2p/interface-peer-id";
+import type { Startable } from "@libp2p/interfaces/startable";
 import { logger } from "@libp2p/logger";
 import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "@organicdesign/libp2p-message-handler";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
@@ -23,11 +24,12 @@ interface Resolver {
 	reject: (error: RPCError) => void
 }
 
-export class RPC {
+export class RPC implements Startable {
 	private readonly options: RPCOpts;
 	private readonly methods = new Map<string, RPCMethod>();
 	private readonly msgPromises = new Map<number, Resolver>();
 	private readonly handler: MessageHandler;
+	private started = false;
 
 	private readonly genMsgId = (() => {
 		let id = 0;
@@ -45,19 +47,35 @@ export class RPC {
 	}
 
 	async start (): Promise<void> {
+		if (this.isStarted()) {
+			return;
+		}
+
 		await this.handler.start();
 
 		this.handler.handle((message, peer) => {
 			this.handleMessage(RPCMessage.decode(message), peer);
 		});
 
+		this.started = true;
+
 		log.general("started");
 	}
 
 	async stop (): Promise<void> {
+		if (!this.isStarted()) {
+			return;
+		}
+
 		await this.handler.stop();
 
+		this.started = false;
+
 		log.general("stopped");
+	}
+
+	isStarted(): boolean {
+		return this.started;
 	}
 
 	addMethod (name: string, method: RPCMethod): void {
