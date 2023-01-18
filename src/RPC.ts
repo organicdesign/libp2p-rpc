@@ -44,7 +44,7 @@ export class RPC {
 		this.handler = createMessageHandler({ protocol: this.options.protocol })(components);
 	}
 
-	async start () {
+	async start (): Promise<void> {
 		await this.handler.start();
 
 		this.handler.handle((message, peer) => {
@@ -54,13 +54,13 @@ export class RPC {
 		log.general("started");
 	}
 
-	async stop () {
+	async stop (): Promise<void> {
 		await this.handler.stop();
 
 		log.general("stopped");
 	}
 
-	addMethod (name: string, method: RPCMethod) {
+	addMethod (name: string, method: RPCMethod): void {
 		this.methods.set(name, method);
 	}
 
@@ -95,7 +95,7 @@ export class RPC {
 		});
 	}
 
-	notify (peer: PeerId, name: string, params?: Uint8Array) {
+	notify (peer: PeerId, name: string, params?: Uint8Array): void {
 		this.handler.send(Messages.createNotification(name, params), peer).catch(() => {});
 
 		log.general("notify '%s' on peer: %p", name, peer);
