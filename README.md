@@ -17,7 +17,7 @@ An RPC module for Libp2p.
   - [RPCException](#rpcexception)
 - [Logging](#logging)
 - [Tests](#tests)
-- [Protocol Design](#protocoldesign)
+- [Protocol Design](#protocol-design)
 - [To-Do](#to-do)
 
 ## Install
