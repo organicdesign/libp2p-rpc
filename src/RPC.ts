@@ -112,15 +112,23 @@ export class RPC implements Startable {
 		log.general("request '%s' on peer: %p", name, peer);
 
 		return await new Promise((resolve, reject) => {
-			this.msgPromises.set(messageId, { resolve, reject });
-
 			if (this.options.timeout < 0) {
 				return;
 			}
 
 			const timeoutError = new RPCException("timeout", 0);
+			const timeout = setTimeout(() => reject(timeoutError), this.options.timeout);
 
-			setTimeout(() => reject(timeoutError), this.options.timeout);
+			this.msgPromises.set(messageId, {
+				resolve (result) {
+					clearTimeout(timeout);
+					resolve(result);
+				},
+				reject (error) {
+					clearTimeout(timeout);
+					reject(error);
+				}
+			});
 		});
 	}
 
