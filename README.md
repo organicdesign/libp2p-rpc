@@ -29,20 +29,32 @@ npm i @organicdesign/libp2p-rpc
 ## Usage
 
 ```javascript
-import { createRPC } from "@organicdesign/libp2p-rpc";
+import { createRPC, RPCException } from "@organicdesign/libp2p-rpc";
 
 const rpc = createRPC([options])(libp2p);
 
 // Add an RPC method.
 rpc.addMethod("log", (params, peerId) => {
-	console.log(`received ${message} from ${peerId.toString()}`);
+	console.log(`received ${params} from ${peerId.toString()}`);
+
+	const somethingHasGoneWrong = false;
+
+	if (somethingHasGoneWrong) {
+		// Respond with an error with a message and code.
+		throw new RPCException("Something went wrong", 0);
+	}
+
+	// Return a response
+	return new Uint8Array([3]);
 });
 
 // Start the rpc module.
 await rpc.start();
 
 // Call the 'log' method on the connected peer with ID peerId with parameter.
-await rpc.request(peerId, "log", new Uint8Array([1]));
+const response = await rpc.request(peerId, "log", new Uint8Array([1]));
+
+console.log("Response: ", response); // Response:  Uint8Array [ 3 ]
 
 // Call the 'log' method without expecting a response.
 rpc.notify(peerId, "log", new Uint8Array([2]));
