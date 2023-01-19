@@ -1,7 +1,11 @@
 import type { PeerId } from "@libp2p/interface-peer-id";
 import type { Startable } from "@libp2p/interfaces/startable";
 import { logger } from "@libp2p/logger";
-import { createMessageHandler, MessageHandler, MessageHandlerComponents } from "@organicdesign/libp2p-message-handler";
+import {
+	createMessageHandler,
+	MessageHandler,
+	MessageHandlerComponents
+} from "@organicdesign/libp2p-message-handler";
 import { RPCMessage, RPCError } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
 import { RPCException } from "./RPCException.js";
@@ -72,7 +76,7 @@ export class RPC implements Startable {
 		// Reject the open promises.
 		for (const promise of this.msgPromises.values()) {
 			promise.reject({
-				code: -32000,
+				code: -32001,
 				message: "RPC module stopped"
 			});
 		}
