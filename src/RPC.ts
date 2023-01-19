@@ -173,9 +173,9 @@ export class RPC implements Startable {
 					error.stack = err.stack;
 				} else {
 					try {
-						error = new RPCException(JSON.stringify(err), 0);
+						error = new RPCException(JSON.stringify(err), -32002);
 					} catch (err) {
-						error = new RPCException("unknown error", 0);
+						error = new RPCException("Unknown error", -32002);
 					}
 				}
 			}
