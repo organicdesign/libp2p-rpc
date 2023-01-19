@@ -6,7 +6,7 @@ import {
 	MessageHandler,
 	MessageHandlerComponents
 } from "@organicdesign/libp2p-message-handler";
-import { RPCMessage, RPCError } from "./RPCProtocol.js";
+import { RPCMessage } from "./RPCProtocol.js";
 import * as Messages from "./RPCMessages.js";
 import { RPCException } from "./RPCException.js";
 
@@ -25,7 +25,7 @@ export type RPCMethod = (params: Uint8Array | undefined, sender: PeerId) => Prom
 
 interface Resolver {
 	resolve: (result?: Uint8Array) => void
-	reject: (error: RPCError) => void
+	reject: (error: RPCException) => void
 }
 
 export class RPC implements Startable {
@@ -75,10 +75,7 @@ export class RPC implements Startable {
 
 		// Reject the open promises.
 		for (const promise of this.msgPromises.values()) {
-			promise.reject({
-				code: -32001,
-				message: "RPC module stopped"
-			});
+			promise.reject(new RPCException("RPC module stopped", -32001));
 		}
 
 		this.msgPromises.clear();
@@ -105,10 +102,7 @@ export class RPC implements Startable {
 		} catch (error) {
 			log.general.error("failed to send message: %o", error);
 
-			const newError: RPCError = {
-				code: -32000,
-				message: error.message
-			};
+			const newError = new RPCException(error.message, -32000);
 
 			throw newError;
 		}
@@ -204,7 +198,7 @@ export class RPC implements Startable {
 				return resolver.resolve(response.result);
 			}
 
-			resolver.reject(response.error);
+			resolver.reject(new RPCException(response.error.message, response.error.code, response.error.data));
 		}
 	}
 }

@@ -1,4 +1,6 @@
-export class RPCException extends Error {
+import { RPCError } from "./RPCProtocol.js";
+
+export class RPCException extends Error implements RPCError {
 	public code: number = 0;
 	public data?: Uint8Array;
 
