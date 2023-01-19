@@ -69,6 +69,17 @@ export class RPC implements Startable {
 
 		await this.handler.stop();
 
+		// Reject the open promises.
+		for (const promise of this.msgPromises.values()) {
+			promise.reject({
+				code: -32000,
+				message: "RPC module stopped"
+			});
+		}
+
+		this.msgPromises.clear();
+		this.methods.clear();
+
 		this.started = false;
 
 		log.general("stopped");
