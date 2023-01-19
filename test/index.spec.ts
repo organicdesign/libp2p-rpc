@@ -34,6 +34,11 @@ beforeEach(async () => {
 	remoteRpc = createRPC()(remoteComponents);
 });
 
+afterEach(async () => {
+	await localRpc.stop();
+	await remoteRpc.stop();
+});
+
 describe("startable interface", () => {
 	it("is not started after creation", async () => {
 		expect(localRpc.isStarted()).toBe(false);
@@ -62,8 +67,8 @@ describe("rpc", () => {
 	});
 
 	afterEach(async () => {
-		await localRpc.stop();
-		await remoteRpc.stop();
+		await Promise.all(localComponents.connectionManager.getConnections().map(c => c.close()));
+		await Promise.all(remoteComponents.connectionManager.getConnections().map(c => c.close()));
 	});
 
 	it("calls the handler method on notifications", async () => {
