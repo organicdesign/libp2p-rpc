@@ -120,7 +120,7 @@ export class RPC implements Startable {
 				return;
 			}
 
-			const timeoutError = new RPCException("timeout", 0);
+			const timeoutError = new RPCException("Request timed out", -32003);
 			const timeout = setTimeout(() => reject(timeoutError), this.options.timeout);
 
 			this.msgPromises.set(messageId, {

@@ -168,6 +168,7 @@ The pre-defined error codes are:
 - `-32000` Thrown when the request could not be sent to the remote peer. The message is not static and is the reason why the request message could not be sent. This can be caused by not being connected to it.
 - `-32001` `RPC module stopped` Thrown when a request is aborted due to the module stopping.
 - `-32002` Thrown when the method throws an error but does not define a code. The message is not static and is the message of the error that was thrown.
+- `-32003` `Request timed out` Thrown when a request timed out.
 
 ## Logging
 
