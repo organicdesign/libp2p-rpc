@@ -4,27 +4,41 @@ import { start } from "@libp2p/interfaces/startable";
 import { stubInterface } from "ts-sinon";
 import type { PeerId } from "@libp2p/interface-peer-id";
 import type { ConnectionManager } from "@libp2p/interface-connection-manager";
+import type { Libp2p } from "@libp2p/interface-libp2p";
 import { RPCComponents, RPC, createRPC } from "../src/index.js";
 
-const createComponents = async (): Promise<RPCComponents & { peerId: PeerId }> => {
-	const components: RPCComponents & { peerId: PeerId } = {
+interface TestRPCComponents extends RPCComponents {
+	peerId: PeerId
+	dial: Libp2p["dial"]
+}
+
+const createComponents = async (): Promise<TestRPCComponents> => {
+	const oldComponents = {
 		peerId: await createRSAPeerId({ bits: 512 }),
 		registrar: mockRegistrar(),
-		connectionManager: stubInterface<ConnectionManager>()
+		connectionManager: stubInterface<ConnectionManager>() as ConnectionManager
 	};
 
-	components.connectionManager = mockConnectionManager(components);
+	oldComponents.connectionManager = mockConnectionManager(oldComponents);
+
+	const components: TestRPCComponents = {
+		peerId: oldComponents.peerId,
+		dial: (peerId) => oldComponents.connectionManager.openConnection(peerId),
+		handle: (protocol: string, handler) => oldComponents.registrar.handle(protocol, handler),
+		unhandle: (protocol: string) => oldComponents.registrar.unhandle(protocol),
+		getConnections: () => oldComponents.connectionManager.getConnections()
+	};
 
 	await start(...Object.entries(components));
 
-	mockNetwork.addNode(components);
+	mockNetwork.addNode(oldComponents);
 
 	return components;
 };
 
-let localComponents: RPCComponents & { peerId: PeerId };
+let localComponents: TestRPCComponents;
 let localRpc: RPC;
-let remoteComponents: RPCComponents & { peerId: PeerId };
+let remoteComponents: TestRPCComponents;
 let remoteRpc: RPC;
 
 beforeEach(async () => {
@@ -63,12 +77,12 @@ describe("rpc", () => {
 		await localRpc.start();
 		await remoteRpc.start();
 
-		await remoteComponents.connectionManager.openConnection(localComponents.peerId);
+		await remoteComponents.dial(localComponents.peerId);
 	});
 
 	afterEach(async () => {
-		await Promise.all(localComponents.connectionManager.getConnections().map(c => c.close()));
-		await Promise.all(remoteComponents.connectionManager.getConnections().map(c => c.close()));
+		await Promise.all(localComponents.getConnections().map(c => c.close()));
+		await Promise.all(remoteComponents.getConnections().map(c => c.close()));
 	});
 
 	it("calls the handler method on notifications", async () => {
