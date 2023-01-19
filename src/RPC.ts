@@ -19,7 +19,7 @@ export interface RPCOpts {
 	timeout: number
 }
 
-export type RPCComponents = MessageHandlerComponents;
+export interface RPCComponents extends MessageHandlerComponents {}
 
 export type RPCMethod = (params: Uint8Array | undefined, sender: PeerId) => Promise<Uint8Array | void> | Uint8Array | void;
 

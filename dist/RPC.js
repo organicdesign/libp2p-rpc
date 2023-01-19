@@ -20,6 +20,7 @@ export class RPC {
         var _a, _b;
         this.methods = new Map();
         this.msgPromises = new Map();
+        this.started = false;
         this.genMsgId = (() => {
             let id = 0;
             return () => id++;
@@ -32,18 +33,35 @@ export class RPC {
     }
     start() {
         return __awaiter(this, void 0, void 0, function* () {
+            if (this.isStarted()) {
+                return;
+            }
             yield this.handler.start();
             this.handler.handle((message, peer) => {
                 this.handleMessage(RPCMessage.decode(message), peer);
             });
+            this.started = true;
             log.general("started");
         });
     }
     stop() {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this.isStarted()) {
+                return;
+            }
             yield this.handler.stop();
+            // Reject the open promises.
+            for (const promise of this.msgPromises.values()) {
+                promise.reject(new RPCException("RPC module stopped", -32001));
+            }
+            this.msgPromises.clear();
+            this.methods.clear();
+            this.started = false;
             log.general("stopped");
         });
+    }
+    isStarted() {
+        return this.started;
     }
     addMethod(name, method) {
         this.methods.set(name, method);
@@ -56,20 +74,26 @@ export class RPC {
             }
             catch (error) {
                 log.general.error("failed to send message: %o", error);
-                const newError = {
-                    code: -32000,
-                    message: error.message
-                };
+                const newError = new RPCException(error.message, -32000);
                 throw newError;
             }
             log.general("request '%s' on peer: %p", name, peer);
             return yield new Promise((resolve, reject) => {
-                this.msgPromises.set(messageId, { resolve, reject });
                 if (this.options.timeout < 0) {
                     return;
                 }
-                const timeoutError = new RPCException("timeout", 0);
-                setTimeout(() => reject(timeoutError), this.options.timeout);
+                const timeoutError = new RPCException("Request timed out", -32003);
+                const timeout = setTimeout(() => reject(timeoutError), this.options.timeout);
+                this.msgPromises.set(messageId, {
+                    resolve(result) {
+                        clearTimeout(timeout);
+                        resolve(result);
+                    },
+                    reject(error) {
+                        clearTimeout(timeout);
+                        reject(error);
+                    }
+                });
             });
         });
     }
@@ -107,10 +131,10 @@ export class RPC {
                     }
                     else {
                         try {
-                            error = new RPCException(JSON.stringify(err), 0);
+                            error = new RPCException(JSON.stringify(err), -32002);
                         }
-                        catch (error) {
-                            error = new RPCException("unknown error", 0);
+                        catch (err) {
+                            error = new RPCException("Unknown error", -32002);
                         }
                     }
                 }
@@ -131,7 +155,7 @@ export class RPC {
                 if (response.error == null) {
                     return resolver.resolve(response.result);
                 }
-                resolver.reject(response.error);
+                resolver.reject(new RPCException(response.error.message, response.error.code, response.error.data));
             }
         });
     }
