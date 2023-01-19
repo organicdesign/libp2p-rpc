@@ -66,7 +66,7 @@ describe("rpc", () => {
 		await remoteRpc.stop();
 	});
 
-	it("calls the handler function on notifications", async () => {
+	it("calls the handler method on notifications", async () => {
 		const params = new Uint8Array([1, 2, 3]);
 
 		const dataPromise: Promise<{ params: Uint8Array, sender: PeerId }> = new Promise(resolve => {
@@ -81,5 +81,26 @@ describe("rpc", () => {
 
 		expect(data.sender.equals(remoteComponents.peerId)).toBe(true);
 		expect(data.params).toStrictEqual(params);
+	});
+
+	it("calls the handler method on requests and returns the result", async () => {
+		const params = new Uint8Array([1, 2, 3]);
+		const response = new Uint8Array([2, 3, 4]);
+
+		const dataPromise: Promise<{ params: Uint8Array, sender: PeerId }> = new Promise(resolve => {
+			localRpc.addMethod("test", (params: Uint8Array, sender: PeerId) => {
+				resolve({ params, sender });
+
+				return response;
+			});
+		});
+
+		const methodResponse = await remoteRpc.request(localComponents.peerId, "test", params);
+
+		const data = await dataPromise;
+
+		expect(data.sender.equals(remoteComponents.peerId)).toBe(true);
+		expect(data.params).toStrictEqual(params);
+		expect(methodResponse).toStrictEqual(response);
 	});
 });
