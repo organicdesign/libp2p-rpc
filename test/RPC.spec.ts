@@ -72,6 +72,31 @@ describe("startable interface", () => {
 	});
 });
 
+describe("methods", () => {
+	it("adds methods", () => {
+		const method = "test";
+
+		// Check something hasn't persisted at the start.
+		expect(localRpc.hasMethod(method)).toBe(false);
+
+		localRpc.addMethod(method, () => {});
+
+		expect(localRpc.hasMethod(method)).toBe(true);
+	});
+
+	it("removes methods", () => {
+		const method = "test";
+
+		// Check something hasn't persisted at the start.
+		expect(localRpc.hasMethod(method)).toBe(false);
+
+		localRpc.addMethod(method, () => {});
+		localRpc.removeMethod(method);
+
+		expect(localRpc.hasMethod(method)).toBe(false);
+	});
+});
+
 describe("rpc", () => {
 	beforeEach(async () => {
 		await localRpc.start();
