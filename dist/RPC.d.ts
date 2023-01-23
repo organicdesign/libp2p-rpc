@@ -20,6 +20,8 @@ export declare class RPC implements Startable {
     stop(): Promise<void>;
     isStarted(): boolean;
     addMethod(name: string, method: RPCMethod): void;
+    hasMethod(name: string): boolean;
+    removeMethod(name: string): boolean;
     request(peer: PeerId, name: string, params?: Uint8Array): Promise<Uint8Array | undefined>;
     notify(peer: PeerId, name: string, params?: Uint8Array): void;
     private handleMessage;

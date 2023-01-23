@@ -66,6 +66,12 @@ export class RPC {
     addMethod(name, method) {
         this.methods.set(name, method);
     }
+    hasMethod(name) {
+        return this.methods.has(name);
+    }
+    removeMethod(name) {
+        return this.methods.delete(name);
+    }
     request(peer, name, params) {
         return __awaiter(this, void 0, void 0, function* () {
             const messageId = this.genMsgId();
