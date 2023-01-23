@@ -94,6 +94,14 @@ export class RPC implements Startable {
 		this.methods.set(name, method);
 	}
 
+	hasMethod (name: string): boolean {
+		return this.methods.has(name);
+	}
+
+	removeMethod (name: string): boolean {
+		return this.methods.delete(name);
+	}
+
 	async request (peer: PeerId, name: string, params?: Uint8Array): Promise<Uint8Array | undefined> {
 		const messageId = this.genMsgId();
 
