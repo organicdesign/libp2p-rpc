@@ -112,7 +112,7 @@ rpc.stop();
 
 - Returns: `<Promise>`
 
-Stop the RPC module, resolves when it has finished stopping.
+Stop the RPC module, resolves when it has finished stopping. This will clear all remote procedure call methods.
 
 #### addMethod
 
@@ -125,7 +125,7 @@ rpc.addMethod(name, method);
   - `params` `<Uint8Array> | <undefined>` The paramters this method was called with.
   - `sender` `<PeerId>` The peer that called this method.
 
-Add a remote procedure call method.
+Add a remote procedure call method. Methods can be added dynamically (before or after the `start` call).
 
 #### hasMethod
 
@@ -147,7 +147,7 @@ rpc.removeMethod(name);
 - `name` `<string>` The name of the method to remove.
 - Returns: `<boolean>` True if the method did exist and was removed.
 
-Remove a remote procedure call method.
+Remove a remote procedure call method. Methods can be removed dynamically (before or after the `start` call).
 
 #### request
 
