@@ -12,6 +12,8 @@ An RPC module for Libp2p.
     - [start](#start)
     - [stop](#stop)
     - [addMethod](#addmethod)
+    - [hasMethod](#hasmethod)
+    - [removeMethod](#removemethod)
     - [request](#request)
     - [notify](#notify)
   - [RPCException](#rpcexception)
@@ -124,6 +126,28 @@ rpc.addMethod(name, method);
   - `sender` `<PeerId>` The peer that called this method.
 
 Add a remote procedure call method.
+
+#### hasMethod
+
+```javascript
+rpc.hasMethod(name);
+```
+
+- `name` `<string>` The name of the method to check.
+- Returns: `<boolean>` True if there is a method handled by that name.
+
+Check if a remote procedure call method exists.
+
+#### removeMethod
+
+```javascript
+rpc.removeMethod(name);
+```
+
+- `name` `<string>` The name of the method to remove.
+- Returns: `<boolean>` True if the method did exist and was removed.
+
+Remove a remote procedure call method.
 
 #### request
 
