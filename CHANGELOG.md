@@ -1,3 +1,9 @@
+## [0.2.1](https://github.com/organicdesign/libp2p-rpc/compare/v0.2.0...v0.2.1) (2023-02-02)
+
+### Fixed
+
+* Fixed security vulnerabilities in packages.
+
 ## [0.2.0](https://github.com/organicdesign/libp2p-rpc/compare/v0.1.0...v0.2.0) (2023-01-24)
 
 ### Added
